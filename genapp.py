@@ -1,16 +1,28 @@
 import os
 import json
 import google.generativeai as genai
-from flask import Flask, request, render_template
+import requests
+from flask import Flask, request, render_template, redirect, url_for
 from PIL import Image, ImageDraw, ImageFont
 
 app = Flask(__name__)
 
 # --- CONFIGURATION ---
-API_KEY = 'x' # <--- Your Key
+API_KEY = 'AIzaSyA_ShNXMcHUak8l9QDs7aeEEqkyn7uK9E4' # <--- Your Key
 genai.configure(api_key=API_KEY)
 
 MODEL_NAME = 'gemini-flash-latest'
+CONFIG_FILE = 'config.json'
+
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    return {"esp32_ip": "0.0.0.0"}
+
+def save_config(config):
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f)
 
 def draw_bounding_boxes(image_path, boxes_data):
     try:
@@ -115,6 +127,64 @@ def index():
                            item_list=item_list, 
                            analysis_report=analysis_report, 
                            error_msg=error_msg)
+
+@app.route('/setup', methods=['GET', 'POST'])
+def setup():
+    config = load_config()
+    message = None
+    if request.method == 'POST':
+        new_ip = request.form.get('esp32_ip')
+        config['esp32_ip'] = new_ip
+        save_config(config)
+        message = "Configuration saved successfully!"
+    return render_template('setup.html', esp32_ip=config.get('esp32_ip'), message=message)
+
+@app.route('/detect-live')
+def detect_live():
+    config = load_config()
+    esp_ip = config.get('esp32_ip')
+    snap_url = f"http://{esp_ip}/capture"
+    
+    try:
+        response = requests.get(snap_url, timeout=10)
+        if response.status_code == 200:
+            if not os.path.exists('static'): os.makedirs('static')
+            filename = f"live_snap_{os.urandom(4).hex()}.jpg"
+            filepath = os.path.join('static', filename)
+            with open(filepath, 'wb') as f:
+                f.write(response.content)
+            
+            ai_result = analyze_and_detect(filepath)
+            
+            error_msg = None
+            analysis_report = None
+            processed_img = None
+            item_list = []
+            
+            if "error" in ai_result:
+                error_msg = ai_result["error"]
+            else:
+                analysis_report = ai_result.get("report", "No report generated.")
+                boxes = ai_result.get("boxes", [])
+                
+                if boxes:
+                    processed_path, items = draw_bounding_boxes(filepath, boxes)
+                    if processed_path:
+                        processed_img = processed_path
+                        item_list = items
+                else:
+                    error_msg = "No microplastics detected in the image."
+            
+            return render_template('home.html', 
+                                   original_img=filepath, 
+                                   processed_img=processed_img, 
+                                   item_list=item_list, 
+                                   analysis_report=analysis_report, 
+                                   error_msg=error_msg)
+        else:
+            return render_template('home.html', error_msg=f"Failed to fetch image from ESP32. Status: {response.status_code}")
+    except Exception as e:
+        return render_template('home.html', error_msg=f"ESP32 Connection Error: {str(e)}")
 
 if __name__ == '__main__':
     app.run(debug=True)

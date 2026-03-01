@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Microplastic Detection AI</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
+
 <body>
 
     <header>
@@ -23,9 +25,19 @@
                 <div id="preview-container">
                     <img id="image-preview" src="#" alt="Image Preview" style="display:none;">
                 </div>
-                <input type="submit" value="Analyze Image" class="btn-submit" id="submitBtn">
+                <div class="action-buttons"
+                    style="display: flex; gap: 15px; margin-top: 20px; justify-content: center; align-items: center;">
+                    <input type="submit" value="Analyze Image" class="btn-submit" id="submitBtn">
+                    <a href="{{ url_for('detect_live') }}" class="btn-submit"
+                        style="background: #28a745; text-decoration: none; text-align: center; padding: 12px 25px; font-size: 16px;">Detect
+                        Live</a>
+                </div>
             </form>
-            
+
+            <!-- <div style="margin-top: 15px; text-align: center;">
+                <a href="{{ url_for('setup') }}" style="color: #666; font-size: 0.9em;">ESP32 Setup</a>
+            </div> -->
+
             <div id="loading" style="display:none;">
                 <div class="spinner"></div>
                 <p>Analyzing morphology...</p>
@@ -41,7 +53,7 @@
 
         {% if analysis_report %}
         <section class="results-section">
-            
+
             <div class="report-card">
                 <h2>1. Scientific Analysis Report</h2>
                 <div class="report-text">
@@ -61,16 +73,16 @@
                         <h3>AI Detected</h3>
                         <img src="{{ processed_img }}" alt="AI Detection">
                         <div class="tags">
-                            <strong>Found:</strong> 
+                            <strong>Found:</strong>
                             {% for item in item_list %}
-                                <span class="tag">{{ item }}</span>
+                            <span class="tag">{{ item }}</span>
                             {% endfor %}
                         </div>
                     </div>
                 </div>
             </div>
             {% endif %}
-            
+
         </section>
         {% endif %}
 
@@ -78,4 +90,5 @@
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
+
 </html>

@@ -1,0 +1,6 @@
+flask
+google-generativeai
+Pillow
+opencv-python
+numpy
+matplotlib
